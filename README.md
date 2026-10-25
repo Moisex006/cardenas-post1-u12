@@ -1,8 +1,7 @@
 # Post-contenido — Unidad 12: Despliegue y CI/CD
 
 ## Descripción
-Repositorio del laboratorio de la Unidad 12 de Programación Web —
-Séptimo Semestre. Contiene la aplicación Spring Boot dockerizada
+Repositorio del laboratorio de la Unidad 12 de Programación Web. Contiene la aplicación Spring Boot dockerizada
 con un Dockerfile multi-stage y perfiles dev/prod (Parte 1), y su
 extensión con un pipeline de integración continua con GitHub
 Actions y monitoreo con Spring Boot Actuator (Parte 2).
