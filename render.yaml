@@ -1,0 +1,40 @@
+# render.yaml — Blueprint de Render: declara la base PostgreSQL y el servicio web.
+# Render construye la imagen con el mismo Dockerfile del repositorio y conecta las
+# credenciales de la base a la aplicación con fromDatabase, sin escribir ningún
+# secreto en este archivo ni en el workflow de GitHub Actions.
+databases:
+  - name: catalogo-db
+    plan: free
+    databaseName: appdb
+    user: appuser
+
+services:
+  - type: web
+    name: catalogo-productos
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase:
+          name: catalogo-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: catalogo-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: catalogo-db
+          property: database
+      - key: DATASOURCE_USER
+        fromDatabase:
+          name: catalogo-db
+          property: user
+      - key: DATASOURCE_PASSWORD
+        fromDatabase:
+          name: catalogo-db
+          property: password
