@@ -1,0 +1,157 @@
+{
+  "info": {
+    "name": "API Catálogo de Productos",
+    "description": "Pruebas de extremo a extremo de la API REST del catálogo (catalogo-productos). Ejecutar en orden: el POST guarda el id creado en la variable de colección productoId, que usan los requests siguientes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "productoId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. POST crear producto",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 201 Created\", () => {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test(\"Respuesta contiene id numérico\", () => {",
+              "    const b = pm.response.json();",
+              "    pm.expect(b).to.have.property(\"id\");",
+              "    pm.expect(b.id).to.be.a(\"number\");",
+              "    pm.collectionVariables.set(\"productoId\", b.id);",
+              "});",
+              "pm.test(\"El cuerpo refleja los datos enviados\", () => {",
+              "    const b = pm.response.json();",
+              "    pm.expect(b.nombre).to.eql(\"Teclado mecánico\");",
+              "    pm.expect(b.precio).to.eql(120.0);",
+              "    pm.expect(b.categoria).to.eql(\"ELECTRONICA\");",
+              "});",
+              "pm.test(\"Tiempo de respuesta < 500ms\", () => {",
+              "    pm.expect(pm.response.responseTime).to.be.below(500);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Teclado mecánico\",\n  \"precio\": 120.0,\n  \"categoria\": \"ELECTRONICA\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/productos",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "productos"]
+        }
+      }
+    },
+    {
+      "name": "2. GET obtener producto creado",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 200 OK\", () => {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"El nombre coincide con el creado\", () => {",
+              "    pm.expect(pm.response.json().nombre).to.eql(\"Teclado mecánico\");",
+              "});",
+              "pm.test(\"El id coincide con el devuelto por el POST\", () => {",
+              "    pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"productoId\")));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/productos/{{productoId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "productos", "{{productoId}}"]
+        }
+      }
+    },
+    {
+      "name": "3. GET listar por categoría ELECTRONICA",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 200 OK\", () => {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"La respuesta es una lista no vacía\", () => {",
+              "    const lista = pm.response.json();",
+              "    pm.expect(lista).to.be.an(\"array\").that.is.not.empty;",
+              "});",
+              "pm.test(\"Todos los productos son de la categoría ELECTRONICA\", () => {",
+              "    pm.response.json().forEach(p => pm.expect(p.categoria).to.eql(\"ELECTRONICA\"));",
+              "});",
+              "pm.test(\"La lista incluye el producto creado\", () => {",
+              "    const id = Number(pm.collectionVariables.get(\"productoId\"));",
+              "    pm.expect(pm.response.json().map(p => p.id)).to.include(id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/productos?categoria=ELECTRONICA",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "productos"],
+          "query": [
+            { "key": "categoria", "value": "ELECTRONICA" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. GET producto inexistente (404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 404 Not Found\", () => {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "pm.test(\"El mensaje indica que el producto no existe\", () => {",
+              "    pm.expect(pm.response.text()).to.include(\"Producto no encontrado\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/productos/99999",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "productos", "99999"]
+        }
+      }
+    }
+  ]
+}

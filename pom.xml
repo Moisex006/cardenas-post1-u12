@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.2.12</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.universidad</groupId>
+	<artifactId>catalogo</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>catalogo</name>
+	<description>Catálogo de productos con suite de pruebas unitarias, de integración y web</description>
+	<properties>
+		<java.version>17</java.version>
+		<!-- Byte Buddy (usado por Mockito) actualizado para poder simular clases con
+		     @MockBean al ejecutar las pruebas sobre JDK 24+; la versión que trae
+		     Spring Boot 3.2 solo soporta hasta Java 23 -->
+		<byte-buddy.version>1.17.8</byte-buddy.version>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<!-- Provee jakarta.validation para la anotación @NotBlank de Producto -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- JUnit 5, Mockito, AssertJ, MockMvc y soporte de @DataJpaTest -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<!-- Cobertura: prepare-agent instrumenta las pruebas, report genera
+			     target/site/jacoco/index.html y check hace fallar mvn verify si la
+			     cobertura de líneas del módulo es menor al 70% -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<!-- 0.8.15 en vez de 0.8.11: la 0.8.11 no reconoce las clases de Java 22+
+				     (Unsupported class file major version 69 al correr sobre JDK 25) -->
+				<version>0.8.15</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals><goal>prepare-agent</goal></goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals><goal>report</goal></goals>
+					</execution>
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals><goal>check</goal></goals>
+						<configuration>
+							<excludes>
+								<exclude>**/*Application.class</exclude>
+								<exclude>**/model/**</exclude>
+							</excludes>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.70</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
