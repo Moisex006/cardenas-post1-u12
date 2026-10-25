@@ -29,6 +29,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+		<!-- Monitoreo: /actuator/health (usado por el smoke test del pipeline) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
 		<!-- Provee jakarta.validation para la anotación @NotBlank de Producto -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
