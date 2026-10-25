@@ -1,0 +1,10 @@
+# .dockerignore — solo pom.xml y src/ entran al contexto de construcción
+target/
+.git/
+.github/
+.idea/
+*.iml
+.mvn/
+*.md
+capturas/
+postman/
