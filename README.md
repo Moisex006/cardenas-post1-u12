@@ -26,6 +26,7 @@ cardenas-post1-u12/
 ├── Dockerfile                        ← multi-stage: Maven + JDK 21 → JRE 21 Alpine, usuario no root
 ├── .dockerignore
 ├── .github/workflows/ci.yml          ← pipeline: build-and-test → docker-build (smoke test)
+├── render.yaml                       ← Blueprint de Render: PostgreSQL + servicio web Docker
 ├── pom.xml                           ← incluye Actuator, H2 (dev) y PostgreSQL (prod)
 ├── src/main/resources/
 │   ├── application.properties        ← base: puerto y perfil activo por variable de entorno
@@ -91,25 +92,44 @@ request hacia `main`, y realiza:
 el indicador de salud responde UP, el mismo que consulta el smoke test.
 
 ## Despliegue (paso final manual)
-Despliegue en **Render** a partir del mismo Dockerfile, sin que el workflow de GitHub Actions
-almacene ningún Secret de la plataforma:
+La aplicación está desplegada en **Render** a partir del mismo Dockerfile, con perfil prod y una base
+PostgreSQL administrada:
 
-1. En [render.com](https://render.com), iniciar sesión con la cuenta de GitHub.
-2. **New → PostgreSQL** (plan Free). Al crearse, copiar de *Connections* el **Hostname**, el
-   **Database**, el **Username** y el **Password**.
-3. **New → Web Service** → conectar el repositorio `cardenas-post1-u12`. Render detecta el
-   `Dockerfile` (Language: Docker) y construye la imagen en su propia infraestructura. Plan Free.
-4. En **Environment** definir:
-   | Variable | Valor |
-   |---|---|
-   | `SPRING_PROFILES_ACTIVE` | `prod` |
-   | `DATASOURCE_URL` | `jdbc:postgresql://<Hostname>:5432/<Database>` |
-   | `DATASOURCE_USER` | `<Username>` |
-   | `DATASOURCE_PASSWORD` | `<Password>` |
+- URL de la aplicación: https://catalogo-productos-4gds.onrender.com
+- /actuator/health: https://catalogo-productos-4gds.onrender.com/actuator/health → `{"status":"UP"}`
+- API: https://catalogo-productos-4gds.onrender.com/api/productos?categoria=ELECTRONICA
 
-   `PORT` lo asigna Render y la aplicación lo toma con `server.port=${PORT:8080}`.
-5. En **Health Check Path** escribir `/actuator/health` y crear el servicio.
-6. Verificar `https://<servicio>.onrender.com/actuator/health` → `{"status":"UP"}`.
+> Plan Free de Render: el servicio se suspende tras un rato sin tráfico y la primera petición
+> puede tardar unos 50 segundos mientras vuelve a arrancar.
+
+El despliegue se declara como código en `render.yaml` (Blueprint de Render):
+
+| Recurso | Tipo | Configuración |
+|---|---|---|
+| `catalogo-db` | PostgreSQL (Free) | base `appdb`, usuario `appuser` |
+| `catalogo-productos` | Web Service Docker (Free) | `Dockerfile` del repositorio, health check en `/actuator/health` |
+
+Variables de entorno del servicio (definidas en `render.yaml`, visibles en el panel con los valores ocultos):
+
+| Variable | Origen |
+|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` |
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | `fromDatabase` → host, puerto y nombre de `catalogo-db` |
+| `DATASOURCE_USER`, `DATASOURCE_PASSWORD` | `fromDatabase` → usuario y contraseña de `catalogo-db` |
+
+`application-prod.properties` usa `DATASOURCE_URL` si está definida y, si no, arma la URL JDBC con
+`DB_HOST`/`DB_PORT`/`DB_NAME`. `PORT` lo asigna Render y se toma con `server.port=${PORT:8080}`.
+
+Pasos realizados:
+1. En el panel de Render: **New → Blueprint** (`https://dashboard.render.com/blueprint/new?repo=https://github.com/Moisex006/cardenas-post1-u12`).
+2. Render lee `render.yaml`, muestra los dos recursos a crear y se confirma con **Deploy Blueprint**.
+3. Render crea la base, construye la imagen con el Dockerfile en su propia infraestructura (≈2 min)
+   y despliega el servicio, que queda en estado **Live**.
+4. Se verifica `/actuator/health` y la API desde la URL pública (ver capturas).
+
+Alternativa sin Blueprint: **New → Web Service** con el repositorio (Render detecta el Dockerfile) y
+las variables `SPRING_PROFILES_ACTIVE=prod`, `DATASOURCE_URL=jdbc:postgresql://<host>:5432/<db>`,
+`DATASOURCE_USER` y `DATASOURCE_PASSWORD` cargadas a mano en **Environment**.
 
 ## Decisiones de diseño
 
@@ -141,9 +161,13 @@ almacene ningún Secret de la plataforma:
 3. Exposición de Actuator diferenciada por perfil (todos los
    endpoints en dev, solo health e info en prod): evita exponer
    públicamente información sensible como variables de entorno.
-4. Smoke test con hasta 30 intentos cada 2 s (60 s) en lugar de 15: en los runners la aplicación
+4. Despliegue declarado en `render.yaml` (Blueprint) en vez de configurarlo a mano en el panel:
+   las credenciales de la base se conectan con `fromDatabase`, de modo que nadie copia ni escribe
+   la contraseña, y la infraestructura queda versionada junto al código. Sigue sin exigir ningún
+   Secret en GitHub Actions: Render construye la imagen por su cuenta a partir del Dockerfile.
+5. Smoke test con hasta 30 intentos cada 2 s (60 s) en lugar de 15: en los runners la aplicación
    respondió UP en unos 8 s, pero el margen evita fallos intermitentes cuando el runner está lento.
-5. `mvn clean verify` en vez de `mvn test`: además de las pruebas ejecuta el umbral de cobertura de
+6. `mvn clean verify` en vez de `mvn test`: además de las pruebas ejecuta el umbral de cobertura de
    JaCoCo heredado de la Unidad 10, de modo que el pipeline también falla si la cobertura baja.
 
 ## Cómo compilar y ejecutar
@@ -181,3 +205,25 @@ Contenedor con los valores por defecto (perfil dev) y con perfil prod contra Pos
 `/actuator/health` respondiendo UP en local, con la exposición diferenciada por perfil:
 
 ![Contenedor respondiendo UP en local](capturas/actuator-health-local.png)
+
+### Parte 2 — Pipeline y despliegue
+Historial de GitHub Actions con las ejecuciones exitosas (checks verdes):
+
+![GitHub Actions con checks verdes](capturas/github-actions.png)
+
+Ejecución con los dos jobs encadenados (`build-and-test` → `docker-build`):
+
+![Jobs encadenados con needs](capturas/github-actions-run.png)
+
+Log del smoke test confirmando UP dentro del pipeline:
+
+![Smoke test respondiendo UP en el pipeline](capturas/smoke-test-log.png)
+
+Panel de Render con el servicio desplegado (Docker, Free, Live) y sus variables de entorno:
+
+![Panel de Render con el despliegue activo](capturas/render-panel.jpg)
+![Variables de entorno en Render](capturas/render-variables.jpg)
+
+`/actuator/health` y la API respondiendo en la URL pública:
+
+![Endpoint /actuator/health respondiendo en la URL publica](capturas/render-health.png)
